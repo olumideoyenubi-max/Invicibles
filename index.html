@@ -1,0 +1,1029 @@
+<title>Invincibles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a tactics board. Pitch on one side, the spin on the other; the season reads like an end-of-year review below. */
+:root {
+  --bg: #eef1ec;
+  --surface: #ffffff;
+  --surface-2: #f4f7f2;
+  --ink: #12201a;
+  --muted: #586860;
+  --rule: #d3dcd5;
+  --pitch: #2e7b47;
+  --pitch-2: #297142;
+  --chalk: rgba(255, 255, 255, 0.72);
+  --on-pitch: #ffffff;
+  --gold: #946600;
+  --gold-soft: #f4e6bf;
+  --on-gold: #ffffff;
+  --win: #1d8549;
+  --draw: #a87300;
+  --loss: #bf352b;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1512; --surface: #15201b; --surface-2: #1b2923; --ink: #e6eee9; --muted: #95a69d; --rule: #2a3a33;
+    --pitch: #1e5b35; --pitch-2: #1b5331; --chalk: rgba(255, 255, 255, 0.55);
+    --gold: #e2b23f; --gold-soft: #3a3019; --on-gold: #1a1405;
+    --win: #43b872; --draw: #e2a72e; --loss: #ef6b5f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1512; --surface: #15201b; --surface-2: #1b2923; --ink: #e6eee9; --muted: #95a69d; --rule: #2a3a33;
+  --pitch: #1e5b35; --pitch-2: #1b5331; --chalk: rgba(255, 255, 255, 0.55);
+  --gold: #e2b23f; --gold-soft: #3a3019; --on-gold: #1a1405;
+  --win: #43b872; --draw: #e2a72e; --loss: #ef6b5f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+  display: grid;
+  gap: 28px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button:disabled { cursor: not-allowed; }
+
+/* Masthead */
+.masthead { display: grid; gap: 6px; }
+.eyebrow {
+  font-family: var(--font-data);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(56px, 11vw, 120px);
+  line-height: 0.85;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-transform: uppercase;
+}
+h1 .zero { color: var(--gold); }
+.lede { margin: 6px 0 0; max-width: 62ch; color: var(--muted); font-size: 17px; }
+h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  text-transform: uppercase;
+  margin: 0;
+  text-wrap: balance;
+}
+h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.label {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* League picker */
+.leagues { display: grid; gap: 12px; }
+.league-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.league {
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.league[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.league:disabled { opacity: 0.55; }
+.slate { font-size: 14px; color: var(--muted); margin: 0; }
+.slate b { color: var(--ink); font-weight: 600; }
+
+/* Draft board */
+.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 24px; align-items: start; }
+@media (max-width: 820px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .spin { order: -1; }
+}
+.pitch-col { display: grid; gap: 12px; justify-items: center; }
+.pitch {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 68 / 86;
+  border-radius: 10px;
+  overflow: hidden;
+  background: repeating-linear-gradient(180deg, var(--pitch) 0 10%, var(--pitch-2) 10% 20%);
+}
+.pitch .line { position: absolute; border: 2px solid var(--chalk); pointer-events: none; }
+.pitch .outline { inset: 3%; }
+.pitch .box { left: 22%; right: 22%; bottom: 3%; height: 16%; border-bottom: 0; }
+.pitch .six { left: 37%; right: 37%; bottom: 3%; height: 6%; border-bottom: 0; }
+.pitch .arc { left: 40%; right: 40%; top: -5%; aspect-ratio: 1; border-radius: 50%; }
+.slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 21%;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--on-pitch);
+}
+.disc {
+  width: clamp(38px, 11vw, 52px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px dashed var(--chalk);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(14px, 3.4vw, 18px);
+  letter-spacing: 0.02em;
+}
+.slot.filled .disc { border: 0; background: var(--surface); color: var(--ink); }
+.slot.filled.off .disc { box-shadow: inset 0 0 0 2px var(--draw); }
+.slot.target .disc { border: 2px solid var(--gold); background: var(--gold); color: var(--on-gold); animation: pulse 1.2s ease-in-out infinite; }
+.slot.target.offpos .disc { background: transparent; color: var(--on-pitch); border-style: dashed; }
+@keyframes pulse { 50% { transform: scale(1.08); } }
+.slot .name {
+  max-width: 100%;
+  font-size: clamp(10px, 2.6vw, 13px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.slot:not(.target):not(.filled) { cursor: default; }
+.meter { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; justify-content: center; }
+.meter .num { font-family: var(--font-data); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+.toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); cursor: pointer; }
+.toggle input { accent-color: var(--gold); width: 16px; height: 16px; }
+
+/* Spin panel */
+.spin {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.spin-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+.club { display: grid; gap: 2px; min-width: 0; }
+.club .club-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(32px, 6vw, 46px); line-height: 0.9; text-transform: uppercase; }
+.club .club-meta { font-family: var(--font-data); font-size: 13px; color: var(--muted); }
+.club.flip { animation: flip 0.45s cubic-bezier(.2, .8, .2, 1); }
+@keyframes flip { from { opacity: 0; transform: translateY(-10px); } }
+.btn {
+  border: 1.5px solid var(--ink);
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: 0.4; }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: 0.03em; text-transform: uppercase; padding: 12px 22px; }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
+.squad { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.squad li { border-bottom: 1px solid var(--rule); }
+.pick {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 6px;
+  background: none;
+  border: 0;
+  text-align: left;
+}
+.pick:hover:not(:disabled) { background: var(--surface-2); }
+.pick[aria-pressed="true"] { background: var(--gold-soft); }
+.pick:disabled { color: var(--muted); }
+.pick .pname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick:disabled .pname { text-decoration: line-through; text-decoration-thickness: 1px; }
+.pos { display: flex; gap: 4px; }
+.chip { font-family: var(--font-data); font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--rule); }
+.rating { font-family: var(--font-data); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.places { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 6px 10px; }
+.places .btn { padding: 4px 10px; font-size: 13px; }
+.done { display: grid; gap: 14px; justify-items: start; }
+
+/* Results */
+.results { display: grid; gap: 24px; border-top: 3px solid var(--ink); padding-top: 24px; }
+.ticker { display: flex; flex-wrap: wrap; gap: 3px; }
+.tick { width: 14px; height: 14px; border-radius: 3px; animation: pop 0.25s ease-out; }
+.tick.W { background: var(--win); }
+.tick.D { background: var(--draw); }
+.tick.L { background: var(--loss); }
+@keyframes pop { from { transform: scale(0.2); opacity: 0; } }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.verdict { display: grid; gap: 8px; }
+.verdict .big { font-family: var(--font-display); font-weight: 900; font-size: clamp(48px, 9vw, 96px); line-height: 0.88; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.verdict .big.gold { color: var(--gold); }
+.verdict .big.loss { color: var(--loss); }
+.verdict p { margin: 0; font-size: 18px; max-width: 60ch; }
+.scoreboard { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: end; }
+.stat { display: grid; gap: 2px; }
+.stat .v { font-family: var(--font-data); font-weight: 600; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .v.W { color: var(--win); }
+.stat .v.D { color: var(--draw); }
+.stat .v.L { color: var(--loss); }
+.comps { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.comp { border-bottom: 1px solid var(--rule); }
+.comp summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 4px;
+  cursor: pointer;
+}
+.comp summary::-webkit-details-marker { display: none; }
+.cup { width: 24px; height: 24px; color: var(--rule); }
+.cup.won { color: var(--gold); }
+.comp .outcome { font-size: 14px; color: var(--muted); }
+.comp .rec { font-family: var(--font-data); font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.fixtures { overflow-x: auto; padding: 0 4px 14px 44px; }
+.fixtures table { border-collapse: collapse; font-size: 14px; width: 100%; min-width: 420px; }
+.fixtures td { padding: 4px 8px 4px 0; border-top: 1px solid var(--rule); white-space: nowrap; }
+.fixtures td.score { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.res { display: inline-block; width: 22px; text-align: center; border-radius: 3px; font-family: var(--font-data); font-weight: 600; font-size: 12px; color: var(--surface); }
+.res.W { background: var(--win); }
+.res.D { background: var(--draw); }
+.res.L { background: var(--loss); }
+.mini { border-collapse: collapse; font-size: 14px; margin: 4px 0 10px; }
+.mini td { padding: 3px 14px 3px 0; font-variant-numeric: tabular-nums; }
+.mini tr.you td { font-weight: 700; color: var(--gold); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+.list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+.list li span:last-child { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.list small { color: var(--muted); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toast { font-size: 14px; color: var(--win); }
+.foot { font-size: 13px; color: var(--muted); max-width: 70ch; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <span class="eyebrow">Draft · Simulate · Survive</span>
+    <h1>Invinc<span class="zero">i</span>bles</h1>
+    <p class="lede">Each spin lands on one of football's great sides. Take one player from it, fill your 4-3-3, then try to get through a full season, cups and Champions League included, without losing a match.</p>
+  </header>
+
+  <section class="leagues" aria-labelledby="lg-h">
+    <span class="label" id="lg-h">Where your XI plays</span>
+    <div class="league-row" id="leagues"></div>
+    <p class="slate" id="slate"></p>
+  </section>
+
+  <section class="board">
+    <div class="pitch-col">
+      <div class="pitch" id="pitch" aria-label="Your starting XI">
+        <div class="line outline"></div>
+        <div class="line arc"></div>
+        <div class="line box"></div>
+        <div class="line six"></div>
+      </div>
+      <div class="meter">
+        <span class="label">Team rating</span>
+        <span class="num" id="teamRating">–</span>
+        <label class="toggle"><input type="checkbox" id="showRatings"> Show ratings</label>
+      </div>
+    </div>
+    <div class="spin" id="spin" aria-live="polite"></div>
+  </section>
+
+  <section class="results" id="results" hidden></section>
+
+  <p class="foot">Player ratings are estimates of each player's level during that spell at the club, not official figures. Picking a player in a position he doesn't usually play costs 4 rating points. Two players from different eras with the same name can only be picked once.</p>
+</div>
+
+<script>
+// ---------- Data ----------
+// [name, positions, rating, short name for the pitch]
+const ERAS = [
+  { c: "Arsenal", e: "2001–05", lg: "Premier League", p: [
+    ["Jens Lehmann","GK",85],["David Seaman","GK",84],["Lauren","RB",82],["Sol Campbell","CB",88],["Kolo Touré","CB",84],["Ashley Cole","LB",87],
+    ["Patrick Vieira","CM",92],["Gilberto Silva","CM",85],["Robert Pires","LW CM",89],["Freddie Ljungberg","RW CM",84],["Dennis Bergkamp","ST CM",90],["Thierry Henry","ST LW",95]]},
+  { c: "Manchester United", e: "1998–01", lg: "Premier League", p: [
+    ["Peter Schmeichel","GK",91],["Gary Neville","RB",84],["Jaap Stam","CB",89],["Ronny Johnsen","CB",80],["Denis Irwin","LB RB",84],["Roy Keane","CM",91],
+    ["Paul Scholes","CM",88],["David Beckham","RW CM",90],["Ryan Giggs","LW",88],["Dwight Yorke","ST",87],["Andy Cole","ST",86],["Teddy Sheringham","ST",84],["Ole Gunnar Solskjær","ST",82]]},
+  { c: "Manchester United", e: "2006–09", lg: "Premier League", p: [
+    ["Edwin van der Sar","GK",88],["Wes Brown","RB CB",80],["Rio Ferdinand","CB",90],["Nemanja Vidić","CB",90],["Patrice Evra","LB",87],["Michael Carrick","CM",85],
+    ["Owen Hargreaves","CM",82],["Ryan Giggs","LW CM",85],["Cristiano Ronaldo","RW LW ST",95],["Wayne Rooney","ST LW",91],["Carlos Tevez","ST",87],["Park Ji-sung","RW LW",80,"Park"]]},
+  { c: "Chelsea", e: "2004–10", lg: "Premier League", p: [
+    ["Petr Čech","GK",92],["Paulo Ferreira","RB",80],["José Bosingwa","RB",81],["John Terry","CB",90],["Ricardo Carvalho","CB",88],["Ashley Cole","LB",88],
+    ["Claude Makélélé","CM",89],["Frank Lampard","CM",92],["Michael Essien","CM",89],["Michael Ballack","CM",86],["Arjen Robben","RW LW",89],["Damien Duff","LW RW",85],
+    ["Joe Cole","LW CM",84],["Florent Malouda","LW",84],["Didier Drogba","ST",92]]},
+  { c: "Liverpool", e: "1977–84", lg: "First Division", p: [
+    ["Ray Clemence","GK",87],["Bruce Grobbelaar","GK",84],["Phil Neal","RB",85],["Alan Hansen","CB",89],["Mark Lawrenson","CB",86],["Alan Kennedy","LB",82],
+    ["Graeme Souness","CM",90],["Terry McDermott","CM",85],["Ray Kennedy","CM LW",84],["Jimmy Case","CM",82],["Steve Heighway","LW",81],["Kenny Dalglish","ST",93],["Ian Rush","ST",90]]},
+  { c: "Tottenham Hotspur", e: "2016–19", lg: "Premier League", p: [
+    ["Hugo Lloris","GK",87],["Kieran Trippier","RB",82],["Toby Alderweireld","CB",87],["Jan Vertonghen","CB",86],["Danny Rose","LB",82],["Ben Davies","LB",79],
+    ["Mousa Dembélé","CM",85],["Christian Eriksen","CM",88],["Dele Alli","CM",86,"Dele"],["Lucas Moura","RW",81,"Lucas"],["Son Heung-min","LW RW",88,"Son"],["Harry Kane","ST",91]]},
+  { c: "Manchester City", e: "2017–23", lg: "Premier League", p: [
+    ["Ederson","GK",89],["Kyle Walker","RB",87],["João Cancelo","RB LB",87],["Rúben Dias","CB",89],["Aymeric Laporte","CB",87],["Vincent Kompany","CB",86],["John Stones","CB",86],
+    ["Rodri","CM",91],["Kevin De Bruyne","CM",94],["David Silva","CM",90,"D. Silva"],["Ilkay Gündoğan","CM",87],["Bernardo Silva","RW CM",89,"Bernardo"],
+    ["Raheem Sterling","LW RW",88],["Riyad Mahrez","RW",87],["Phil Foden","LW CM",87],["Sergio Agüero","ST",91],["Erling Haaland","ST",94]]},
+  { c: "Liverpool", e: "2018–22", lg: "Premier League", p: [
+    ["Alisson","GK",91],["Trent Alexander-Arnold","RB",88],["Virgil van Dijk","CB",93],["Joël Matip","CB",84],["Ibrahima Konaté","CB",84],["Andrew Robertson","LB",88],
+    ["Fabinho","CM",87],["Jordan Henderson","CM",85],["Georginio Wijnaldum","CM",84],["Mohamed Salah","RW",92],["Sadio Mané","LW",90],["Roberto Firmino","ST",87],["Diogo Jota","LW ST",85]]},
+
+  { c: "Barcelona", e: "1990–94", lg: "La Liga", p: [
+    ["Andoni Zubizarreta","GK",85],["Albert Ferrer","RB",82],["Ronald Koeman","CB",88],["Miguel Ángel Nadal","CB",81],["Sergi Barjuán","LB",80,"Sergi"],["Pep Guardiola","CM",86],
+    ["José Mari Bakero","CM",83],["Michael Laudrup","CM",91],["Jon Andoni Goikoetxea","RW",80],["Txiki Begiristain","LW",82],["Hristo Stoichkov","LW ST",92],["Romário","ST",93]]},
+  { c: "Real Madrid", e: "2000–06", lg: "La Liga", p: [
+    ["Iker Casillas","GK",88],["Míchel Salgado","RB",83],["Fernando Hierro","CB",86],["Iván Helguera","CB",83],["Roberto Carlos","LB",91],["Claude Makélélé","CM",87],
+    ["Zinedine Zidane","CM",95],["Guti","CM",83],["David Beckham","RW CM",87],["Luís Figo","RW",92],["Raúl","ST",91],["Ronaldo Nazário","ST",94,"Ronaldo"],
+    ["Fernando Morientes","ST",84],["Michael Owen","ST",84]]},
+  { c: "Barcelona", e: "2008–12", lg: "La Liga", p: [
+    ["Víctor Valdés","GK",86],["Dani Alves","RB",89],["Carles Puyol","CB",89],["Gerard Piqué","CB",89],["Éric Abidal","LB",84],["Sergio Busquets","CM",88],
+    ["Xavi","CM",94],["Andrés Iniesta","CM LW",93],["Javier Mascherano","CM CB",85],["Lionel Messi","RW ST",97],["Samuel Eto'o","ST",90],["Thierry Henry","LW",86],
+    ["David Villa","LW ST",88],["Pedro","LW RW",84],["Zlatan Ibrahimović","ST",87]]},
+  { c: "Atlético Madrid", e: "2013–16", lg: "La Liga", p: [
+    ["Thibaut Courtois","GK",88],["Jan Oblak","GK",89],["Juanfran","RB",84],["Diego Godín","CB",89],["João Miranda","CB",85,"Miranda"],["José María Giménez","CB",83],
+    ["Filipe Luís","LB",86],["Gabi","CM",83],["Koke","CM",86],["Tiago","CM",82],["Saúl Ñíguez","CM",84,"Saúl"],["Arda Turan","LW CM",85,"Arda"],
+    ["Diego Costa","ST",89],["Antoine Griezmann","ST LW",90]]},
+  { c: "Barcelona", e: "2014–17", lg: "La Liga", p: [
+    ["Marc-André ter Stegen","GK",87],["Dani Alves","RB",86],["Sergi Roberto","RB CM",80],["Gerard Piqué","CB",89],["Samuel Umtiti","CB",84],["Javier Mascherano","CB CM",85],
+    ["Jordi Alba","LB",87],["Sergio Busquets","CM",89],["Ivan Rakitić","CM",86],["Andrés Iniesta","CM",90],["Lionel Messi","RW ST",98],["Neymar","LW",92],["Luis Suárez","ST",93]]},
+  { c: "Real Madrid", e: "2014–18", lg: "La Liga", p: [
+    ["Keylor Navas","GK",87],["Dani Carvajal","RB",86],["Sergio Ramos","CB",92],["Raphaël Varane","CB",88],["Pepe","CB",86],["Marcelo","LB",89],
+    ["Casemiro","CM",88],["Toni Kroos","CM",91],["Luka Modrić","CM",93],["Isco","CM",86],["Gareth Bale","RW",90],["Cristiano Ronaldo","LW ST",96],["Karim Benzema","ST",88]]},
+
+  { c: "AC Milan", e: "1988–94", lg: "Serie A", p: [
+    ["Giovanni Galli","GK",83],["Sebastiano Rossi","GK",83],["Mauro Tassotti","RB",86],["Franco Baresi","CB",95],["Alessandro Costacurta","CB",87],["Paolo Maldini","LB",93],
+    ["Frank Rijkaard","CM",91],["Carlo Ancelotti","CM",84],["Demetrio Albertini","CM",85],["Roberto Donadoni","RW",86],["Ruud Gullit","CM ST",93],["Dejan Savićević","ST CM",87],["Marco van Basten","ST",96]]},
+  { c: "Juventus", e: "1995–98", lg: "Serie A", p: [
+    ["Angelo Peruzzi","GK",88],["Moreno Torricelli","RB",80],["Ciro Ferrara","CB",86],["Paolo Montero","CB",85],["Gianluca Pessotto","LB",79],["Didier Deschamps","CM",86],
+    ["Antonio Conte","CM",84],["Edgar Davids","CM",86],["Zinedine Zidane","CM",93],["Alessandro Del Piero","ST LW",92],["Gianluca Vialli","ST",88],["Fabrizio Ravanelli","ST",85],
+    ["Filippo Inzaghi","ST",86],["Alen Bokšić","ST",83]]},
+  { c: "AC Milan", e: "2002–07", lg: "Serie A", p: [
+    ["Dida","GK",87],["Cafu","RB",89],["Alessandro Nesta","CB",92],["Jaap Stam","CB",85],["Paolo Maldini","CB LB",89],["Kakha Kaladze","LB CB",82],
+    ["Andrea Pirlo","CM",91],["Gennaro Gattuso","CM",86],["Clarence Seedorf","CM",88],["Kaká","CM",95],["Rui Costa","CM",85],["Andriy Shevchenko","ST",93],["Filippo Inzaghi","ST",86]]},
+  { c: "Inter", e: "2008–10", lg: "Serie A", p: [
+    ["Júlio César","GK",89],["Maicon","RB",91],["Lúcio","CB",89],["Walter Samuel","CB",86],["Javier Zanetti","LB RB CM",87],["Esteban Cambiasso","CM",86],
+    ["Wesley Sneijder","CM",92],["Dejan Stanković","CM",84],["Thiago Motta","CM",82],["Samuel Eto'o","RW ST",89],["Goran Pandev","LW",80],["Diego Milito","ST",90],["Zlatan Ibrahimović","ST",90]]},
+  { c: "Juventus", e: "2014–18", lg: "Serie A", p: [
+    ["Gianluigi Buffon","GK",90],["Stephan Lichtsteiner","RB",83],["Leonardo Bonucci","CB",88],["Giorgio Chiellini","CB",89],["Andrea Barzagli","CB",86],["Alex Sandro","LB",86],
+    ["Patrice Evra","LB",82],["Andrea Pirlo","CM",87],["Paul Pogba","CM",88],["Arturo Vidal","CM",87],["Claudio Marchisio","CM",84],["Miralem Pjanić","CM",86],
+    ["Paulo Dybala","ST RW",88],["Gonzalo Higuaín","ST",89],["Carlos Tevez","ST",88],["Mario Mandžukić","ST LW",84]]},
+  { c: "Napoli", e: "2022–23", lg: "Serie A", p: [
+    ["Alex Meret","GK",81],["Giovanni Di Lorenzo","RB",84],["Kim Min-jae","CB",87,"Kim"],["Amir Rrahmani","CB",81],["Mário Rui","LB",79],["Stanislav Lobotka","CM",84],
+    ["André-Frank Zambo Anguissa","CM",83,"Anguissa"],["Piotr Zieliński","CM",82],["Matteo Politano","RW",79],["Khvicha Kvaratskhelia","LW",88,"Kvara"],["Victor Osimhen","ST",89]]},
+
+  { c: "Bayern Munich", e: "1972–76", lg: "Bundesliga", p: [
+    ["Sepp Maier","GK",89],["Johnny Hansen","RB",79],["Franz Beckenbauer","CB CM",96],["Hans-Georg Schwarzenbeck","CB",83],["Paul Breitner","LB CM",88],["Uli Hoeneß","CM RW",86],
+    ["Franz Roth","CM",81],["Rainer Zobel","CM",79],["Conny Torstensson","RW ST",80],["Karl-Heinz Rummenigge","RW ST",82],["Gerd Müller","ST",95]]},
+  { c: "Borussia Dortmund", e: "2010–13", lg: "Bundesliga", p: [
+    ["Roman Weidenfeller","GK",82],["Łukasz Piszczek","RB",85],["Mats Hummels","CB",88],["Neven Subotić","CB",84],["Marcel Schmelzer","LB",81],["Sven Bender","CM",82],
+    ["Ilkay Gündoğan","CM",85],["Nuri Şahin","CM",84],["Mario Götze","CM LW",86],["Shinji Kagawa","CM",85],["Jakub Błaszczykowski","RW",83],["Kevin Großkreutz","LW RB",79],
+    ["Marco Reus","LW",88],["Robert Lewandowski","ST",89]]},
+  { c: "Bayern Munich", e: "2012–14", lg: "Bundesliga", p: [
+    ["Manuel Neuer","GK",92],["Philipp Lahm","RB CM",91],["Jérôme Boateng","CB",87],["Dante","CB",83],["David Alaba","LB",88],["Bastian Schweinsteiger","CM",90],
+    ["Javi Martínez","CM CB",86],["Toni Kroos","CM",87],["Thiago Alcântara","CM",85,"Thiago"],["Thomas Müller","CM RW ST",89],["Arjen Robben","RW",91],["Franck Ribéry","LW",92],
+    ["Mario Mandžukić","ST",85],["Mario Gómez","ST",84]]},
+  { c: "Bayern Munich", e: "2019–21", lg: "Bundesliga", p: [
+    ["Manuel Neuer","GK",91],["Joshua Kimmich","RB CM",89],["Benjamin Pavard","RB CB",82],["David Alaba","CB LB",87],["Jérôme Boateng","CB",84],["Niklas Süle","CB",83],
+    ["Alphonso Davies","LB",86],["Thiago Alcântara","CM",88,"Thiago"],["Leon Goretzka","CM",86],["Thomas Müller","CM ST",89],["Serge Gnabry","RW",86],["Kingsley Coman","LW RW",85],
+    ["Leroy Sané","LW RW",84],["Robert Lewandowski","ST",95]]},
+  { c: "Bayer Leverkusen", e: "2023–24", lg: "Bundesliga", p: [
+    ["Lukáš Hrádecký","GK",83],["Jeremie Frimpong","RB RW",84],["Jonathan Tah","CB",84],["Edmond Tapsoba","CB",83],["Piero Hincapié","CB LB",81],["Alejandro Grimaldo","LB",86],
+    ["Granit Xhaka","CM",86],["Exequiel Palacios","CM",83],["Florian Wirtz","CM LW",89],["Jonas Hofmann","CM RW",82],["Amine Adli","LW RW",78],["Victor Boniface","ST",84],["Patrik Schick","ST",81]]},
+
+  { c: "Marseille", e: "1990–93", lg: "Ligue 1", p: [
+    ["Fabien Barthez","GK",84],["Jocelyn Angloma","RB",82],["Basile Boli","CB",86],["Carlos Mozer","CB",85],["Marcel Desailly","CB CM",85],["Éric Di Meco","LB",80],
+    ["Didier Deschamps","CM",84],["Franck Sauzée","CM",84],["Abedi Pelé","CM LW",88],["Chris Waddle","RW",87],["Jean-Pierre Papin","ST",93],["Rudi Völler","ST",86],["Alen Bokšić","ST",86]]},
+  { c: "Lyon", e: "2002–08", lg: "Ligue 1", p: [
+    ["Grégory Coupet","GK",86],["Anthony Réveillère","RB",80],["Cris","CB",83],["Claudio Caçapa","CB",80],["Éric Abidal","LB",82],["Juninho Pernambucano","CM",90,"Juninho"],
+    ["Michael Essien","CM",85],["Mahamadou Diarra","CM",82],["Jérémy Toulalan","CM",81],["Sidney Govou","RW",81],["Florent Malouda","LW",85],["Sylvain Wiltord","ST RW",83],
+    ["Karim Benzema","ST",84],["Fred","ST",79]]},
+  { c: "Paris Saint-Germain", e: "2017–23", lg: "Ligue 1", p: [
+    ["Keylor Navas","GK",87],["Gianluigi Donnarumma","GK",87],["Achraf Hakimi","RB",86],["Marquinhos","CB",88],["Thiago Silva","CB",88,"T. Silva"],["Presnel Kimpembe","CB",82],
+    ["Nuno Mendes","LB",83],["Marco Verratti","CM",87],["Leandro Paredes","CM",80],["Vitinha","CM",82],["Ángel Di María","RW",87],["Lionel Messi","RW",90],
+    ["Neymar","LW",92],["Kylian Mbappé","ST LW",94],["Edinson Cavani","ST",88]]},
+
+  { c: "Ajax", e: "1970–73", lg: "Eredivisie", p: [
+    ["Heinz Stuy","GK",79],["Wim Suurbier","RB",83],["Barry Hulshoff","CB",84],["Horst Blankenburg","CB",82],["Ruud Krol","LB",88],["Johan Neeskens","CM",90],
+    ["Arie Haan","CM",85],["Gerrie Mühren","CM",83],["Johnny Rep","RW",83],["Sjaak Swart","RW",80],["Piet Keizer","LW",86],["Johan Cruyff","ST CM",97]]},
+  { c: "Ajax", e: "1994–96", lg: "Eredivisie", p: [
+    ["Edwin van der Sar","GK",86],["Michael Reiziger","RB",82],["Danny Blind","CB",87],["Frank de Boer","CB LB",87,"F. de Boer"],["Winston Bogarde","LB",80],["Frank Rijkaard","CM",88],
+    ["Clarence Seedorf","CM",84],["Edgar Davids","CM",85],["Ronald de Boer","CM RW",85,"R. de Boer"],["Jari Litmanen","CM ST",90],["Finidi George","RW",85,"Finidi"],
+    ["Marc Overmars","LW",87],["Patrick Kluivert","ST",86],["Nwankwo Kanu","ST",82,"Kanu"]]},
+  { c: "Porto", e: "2003–04", lg: "Primeira Liga", p: [
+    ["Vítor Baía","GK",85],["Paulo Ferreira","RB",84],["Ricardo Carvalho","CB",87],["Jorge Costa","CB",83],["Nuno Valente","LB",80],["Costinha","CM",82],
+    ["Maniche","CM",84],["Pedro Mendes","CM",79],["Deco","CM",90],["Dmitri Alenichev","CM LW",80],["Carlos Alberto","RW",76],["Derlei","ST",82],["Benni McCarthy","ST",82]]},
+  { c: "Celtic", e: "2016–17", lg: "Scottish Premiership", p: [
+    ["Craig Gordon","GK",79],["Mikael Lustig","RB",76],["Dedryck Boyata","CB",77],["Jozo Šimunović","CB",74],["Kieran Tierney","LB",80],["Scott Brown","CM",79],
+    ["Stuart Armstrong","CM",78],["Tom Rogić","CM",78],["James Forrest","RW",77],["Patrick Roberts","RW",77],["Scott Sinclair","LW",80],["Moussa Dembélé","ST",80],["Leigh Griffiths","ST",76]]},
+  { c: "Boca Juniors", e: "1999–01", lg: "Primera División", p: [
+    ["Óscar Córdoba","GK",81],["Hugo Ibarra","RB",78],["Jorge Bermúdez","CB",80],["Walter Samuel","CB",82],["Rodolfo Arruabarrena","LB",77],["Mauricio Serna","CM",79],
+    ["Sebastián Battaglia","CM",80],["Juan Román Riquelme","CM",90],["Guillermo Barros Schelotto","RW",82,"Guillermo"],["Marcelo Delgado","LW ST",81],["Martín Palermo","ST",83]]},
+  { c: "Flamengo", e: "2019", lg: "Brasileirão", p: [
+    ["Diego Alves","GK",79],["Rafinha","RB",80],["Rodrigo Caio","CB",78],["Pablo Marí","CB",77],["Filipe Luís","LB",82],["Willian Arão","CM",78],
+    ["Gerson","CM",82],["Giorgian de Arrascaeta","CM",84,"Arrascaeta"],["Everton Ribeiro","RW",82],["Bruno Henrique","LW",83],["Gabriel Barbosa","ST",84,"Gabigol"]]},
+  { c: "Al Hilal", e: "2023–25", lg: "Saudi Pro League", p: [
+    ["Yassine Bounou","GK",86,"Bono"],["Saud Abdulhamid","RB",74],["João Cancelo","RB LB",84],["Kalidou Koulibaly","CB",84],["Ali Al-Bulaihi","CB",75],["Renan Lodi","LB",79],
+    ["Rúben Neves","CM",85],["Sergej Milinković-Savić","CM",85,"Milinković"],["Malcom","RW",83],["Neymar","LW",84],["Salem Al-Dawsari","LW",79],["Aleksandar Mitrović","ST",84]]},
+  { c: "Al Nassr", e: "2023–25", lg: "Saudi Pro League", p: [
+    ["Bento","GK",79],["David Ospina","GK",78],["Sultan Al-Ghannam","RB",73],["Aymeric Laporte","CB",84],["Mohamed Simakan","CB",79],["Alex Telles","LB",79],
+    ["Marcelo Brozović","CM",84],["Otávio","CM",82],["Seko Fofana","CM",80],["Anderson Talisca","CM ST",82,"Talisca"],["Sadio Mané","LW",84],["Cristiano Ronaldo","ST",88]]},
+  { c: "Inter Miami", e: "2023–25", lg: "MLS", p: [
+    ["Drake Callender","GK",74],["Tomás Avilés","CB",74],["Maximiliano Falcón","CB",73],["Jordi Alba","LB",82],["Sergio Busquets","CM",83],["Rodrigo De Paul","CM",83],
+    ["Benjamin Cremaschi","CM",72],["Tadeo Allende","RW",78],["Lionel Messi","RW",91],["Luis Suárez","ST",84]]},
+];
+
+const UEFA = [
+  ["Real Madrid",88,"ESP"],["Barcelona",87,"ESP"],["Atlético Madrid",84,"ESP"],["Athletic Club",79,"ESP"],["Villarreal",79,"ESP"],
+  ["Arsenal",88,"ENG"],["Liverpool",87,"ENG"],["Manchester City",87,"ENG"],["Chelsea",85,"ENG"],["Newcastle United",81,"ENG"],["Tottenham Hotspur",80,"ENG"],
+  ["Bayern Munich",88,"GER"],["Bayer Leverkusen",82,"GER"],["Borussia Dortmund",82,"GER"],["Eintracht Frankfurt",78,"GER"],
+  ["Inter",86,"ITA"],["Napoli",83,"ITA"],["Juventus",82,"ITA"],["Atalanta",81,"ITA"],
+  ["Paris Saint-Germain",88,"FRA"],["Marseille",80,"FRA"],["Monaco",79,"FRA"],
+  ["Benfica",79,"POR"],["Sporting CP",79,"POR"],["PSV",77,"NED"],["Ajax",75,"NED"],["Galatasaray",77,"TUR"],["Club Brugge",75,"BEL"],
+  ["Olympiacos",74,"GRE"],["Union Saint-Gilloise",73,"BEL"],["Bodø/Glimt",72,"NOR"],["Copenhagen",71,"DEN"],["Slavia Prague",70,"CZE"],
+  ["Qarabağ",68,"AZE"],["Pafos",66,"CYP"],["Kairat Almaty",64,"KAZ"],
+].map(([n, s, lg]) => ({ n, s, lg }));
+
+const ACL_WEST = [
+  ["Al Ain",72,"UAE"],["Al Sadd",72,"QAT"],["Shabab Al Ahli",71,"UAE"],["Al Duhail",70,"QAT"],["Sharjah",70,"UAE"],["Al Wasl",69,"UAE"],
+  ["Al Rayyan",69,"QAT"],["Al Gharafa",68,"QAT"],["Esteghlal",68,"IRN"],["Persepolis",68,"IRN"],["Pakhtakor",67,"UZB"],["Al Shorta",65,"IRQ"],
+].map(([n, s, lg]) => ({ n, s, lg }));
+const ACL_ALL = ACL_WEST.concat([
+  ["Al Hilal",80,"KSA"],["Al Ahli",79,"KSA"],["Al Ittihad",79,"KSA"],["Al Nassr",78,"KSA"],["Vissel Kobe",73,"JPN"],["Kawasaki Frontale",72,"JPN"],
+  ["Ulsan HD",72,"KOR"],["Yokohama F. Marinos",71,"JPN"],["Buriram United",70,"THA"],["Johor Darul Ta'zim",70,"MAS"],["Shanghai Port",70,"CHN"],["Gwangju FC",69,"KOR"],
+].map(([n, s, lg]) => ({ n, s, lg })));
+
+const CONT = {
+  UCL: { n: "Champions League", phasePool: UEFA, koPool: UEFA, top8: 16, playoffMin: 11,
+    playoff: { n: "Knockout play-off", legs: 2, from: 8, to: 24 },
+    ko: [{ n: "Round of 16", legs: 2, ranks: 16 }, { n: "Quarter-final", legs: 2, ranks: 10 }, { n: "Semi-final", legs: 2, ranks: 6 }, { n: "Final", neutral: 1, ranks: 4 }] },
+  ACL: { n: "AFC Champions League Elite", phasePool: ACL_WEST, koPool: ACL_ALL, top8: 12, playoffMin: null,
+    ko: [{ n: "Round of 16", legs: 2, ranks: 14 }, { n: "Quarter-final", neutral: 1, ranks: 8 }, { n: "Semi-final", neutral: 1, ranks: 5 }, { n: "Final", neutral: 1, ranks: 3 }] },
+};
+
+const LEAGUES = {
+  ENG: { name: "Premier League", top: 87, bottom: 71, cont: "UCL",
+    teams: ["Arsenal","Liverpool","Manchester City","Chelsea","Newcastle United","Aston Villa","Tottenham Hotspur","Manchester United","Nottingham Forest","Brighton","Crystal Palace","Bournemouth","Brentford","Fulham","Everton","West Ham United","Wolves","Leeds United","Sunderland","Burnley"],
+    lower: ["Wrexham","Birmingham City","Plymouth Argyle","Stockport County","Bolton Wanderers","Mansfield Town"],
+    sup: { n: "Community Shield", rounds: [{ n: "Final", neutral: 1 }] },
+    cups: [
+      { n: "FA Cup", start: 0.36, end: 0.97, rounds: [{ n: "Third round" }, { n: "Fourth round" }, { n: "Fifth round" }, { n: "Quarter-final" }, { n: "Semi-final", neutral: 1 }, { n: "Final", neutral: 1 }] },
+      { n: "EFL Cup", start: 0.12, end: 0.62, rounds: [{ n: "Third round" }, { n: "Fourth round" }, { n: "Quarter-final" }, { n: "Semi-final", legs: 2 }, { n: "Final", neutral: 1 }] },
+    ] },
+  ESP: { name: "La Liga", top: 88, bottom: 69, cont: "UCL",
+    teams: ["Real Madrid","Barcelona","Atlético Madrid","Athletic Club","Villarreal","Real Betis","Real Sociedad","Celta Vigo","Sevilla","Osasuna","Girona","Rayo Vallecano","Valencia","Getafe","Espanyol","Mallorca","Alavés","Elche","Levante","Real Oviedo"],
+    lower: ["Deportivo La Coruña","Racing Santander","Sporting Gijón","Zaragoza","Barbastro","Pontevedra"],
+    sup: { n: "Supercopa de España", rounds: [{ n: "Semi-final", neutral: 1 }, { n: "Final", neutral: 1 }] },
+    cups: [{ n: "Copa del Rey", start: 0.3, end: 0.95, rounds: [{ n: "Round of 32" }, { n: "Round of 16" }, { n: "Quarter-final" }, { n: "Semi-final", legs: 2 }, { n: "Final", neutral: 1 }] }] },
+  ITA: { name: "Serie A", top: 86, bottom: 69, cont: "UCL",
+    teams: ["Inter","Napoli","Juventus","Atalanta","Milan","Roma","Lazio","Bologna","Como","Fiorentina","Torino","Udinese","Genoa","Cagliari","Parma","Lecce","Verona","Sassuolo","Cremonese","Pisa"],
+    lower: ["Palermo","Sampdoria","Spezia","Bari","Modena","Monza"],
+    sup: { n: "Supercoppa Italiana", rounds: [{ n: "Semi-final", neutral: 1 }, { n: "Final", neutral: 1 }] },
+    cups: [{ n: "Coppa Italia", start: 0.35, end: 0.95, rounds: [{ n: "Round of 16" }, { n: "Quarter-final" }, { n: "Semi-final", legs: 2 }, { n: "Final", neutral: 1 }] }] },
+  GER: { name: "Bundesliga", top: 88, bottom: 68, cont: "UCL",
+    teams: ["Bayern Munich","Bayer Leverkusen","Borussia Dortmund","RB Leipzig","Eintracht Frankfurt","VfB Stuttgart","SC Freiburg","Mainz 05","VfL Wolfsburg","Borussia Mönchengladbach","Hoffenheim","Werder Bremen","Union Berlin","Augsburg","1. FC Köln","Hamburger SV","Heidenheim","St. Pauli"],
+    lower: ["Schalke 04","Hertha BSC","Kaiserslautern","Arminia Bielefeld","Hannover 96","Saarbrücken"],
+    sup: { n: "DFL-Supercup", rounds: [{ n: "Final" }] },
+    cups: [{ n: "DFB-Pokal", start: 0.06, end: 0.97, rounds: [{ n: "First round" }, { n: "Second round" }, { n: "Round of 16" }, { n: "Quarter-final" }, { n: "Semi-final" }, { n: "Final", neutral: 1 }] }] },
+  FRA: { name: "Ligue 1", top: 87, bottom: 67, cont: "UCL",
+    teams: ["Paris Saint-Germain","Marseille","Monaco","Lille","Lyon","Nice","Lens","Strasbourg","Rennes","Brest","Toulouse","Auxerre","Nantes","Angers","Le Havre","Lorient","Metz","Paris FC"],
+    lower: ["Saint-Étienne","Bordeaux","Guingamp","Red Star","Dunkerque","Caen"],
+    sup: { n: "Trophée des Champions", rounds: [{ n: "Final", neutral: 1 }] },
+    cups: [{ n: "Coupe de France", start: 0.4, end: 0.95, rounds: [{ n: "Round of 64" }, { n: "Round of 32" }, { n: "Round of 16" }, { n: "Quarter-final" }, { n: "Semi-final" }, { n: "Final", neutral: 1 }] }] },
+  KSA: { name: "Saudi Pro League", top: 81, bottom: 62, cont: "ACL",
+    teams: ["Al Hilal","Al Nassr","Al Ittihad","Al Ahli","Al Qadsiah","Al Shabab","Al Ettifaq","Al Taawoun","Al Fateh","Al Khaleej","Al Riyadh","Al Fayha","Al Kholood","Al Okhdood","Damac","Al Hazem","Al Najma","NEOM"],
+    lower: ["Al Wehda","Al Raed","Al Orobah","Abha","Al Faisaly","Al Jabalain"],
+    sup: { n: "Saudi Super Cup", rounds: [{ n: "Semi-final", neutral: 1 }, { n: "Final", neutral: 1 }] },
+    cups: [{ n: "King's Cup", start: 0.2, end: 0.95, rounds: [{ n: "Round of 32" }, { n: "Round of 16" }, { n: "Quarter-final" }, { n: "Semi-final" }, { n: "Final", neutral: 1 }] }] },
+};
+
+const SLOTS = [
+  { id: "LW", pos: "LW", x: 20, y: 19 }, { id: "ST", pos: "ST", x: 50, y: 13 }, { id: "RW", pos: "RW", x: 80, y: 19 },
+  { id: "CM1", pos: "CM", x: 24, y: 43 }, { id: "CM2", pos: "CM", x: 50, y: 48 }, { id: "CM3", pos: "CM", x: 76, y: 43 },
+  { id: "LB", pos: "LB", x: 14, y: 68 }, { id: "CB1", pos: "CB", x: 37, y: 72 }, { id: "CB2", pos: "CB", x: 63, y: 72 }, { id: "RB", pos: "RB", x: 86, y: 68 },
+  { id: "GK", pos: "GK", x: 50, y: 90 },
+];
+const LINE = { GK: "G", RB: "D", CB: "D", LB: "D", CM: "M", RW: "A", ST: "A", LW: "A" };
+const OFF_POSITION = 4;
+const RESPINS = 2;
+
+// ---------- State ----------
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+let state;
+function freshState(keep = {}) {
+  return {
+    league: keep.league || store.get("inv-league") || "ENG",
+    showRatings: keep.showRatings ?? store.get("inv-ratings") === "1",
+    xi: {}, used: [], recent: [], current: null, selected: null, respins: RESPINS, result: null,
+  };
+}
+
+// ---------- Helpers ----------
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rand = (n) => Math.floor(Math.random() * n);
+const pickOne = (a) => a[rand(a.length)];
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sig = (x) => 1 / (1 + Math.exp(-x));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function pois(l) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L); return k - 1; }
+const PARTICLES = new Set(["van", "de", "der", "di", "da", "dos", "ter", "von", "del"]);
+function shortName(p) {
+  if (p[3]) return p[3];
+  const w = p[0].split(" ");
+  if (w.length === 1) return w[0];
+  for (let i = 1; i < w.length - 1; i++) if (PARTICLES.has(w[i].toLowerCase())) return w.slice(i).join(" ");
+  return w[w.length - 1];
+}
+const filledCount = () => Object.keys(state.xi).length;
+const ordinal = (n) => n + (["th", "st", "nd", "rd"][(n % 100 - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th");
+
+// ---------- Draft ----------
+function openFits(p) {
+  const poss = p[1].split(" ");
+  return SLOTS.filter((s) => !state.xi[s.id]).map((s) => {
+    if (poss.includes(s.pos)) return { s, eff: p[2], nat: true };
+    if (s.pos !== "GK" && poss.some((q) => LINE[q] === LINE[s.pos])) return { s, eff: p[2] - OFF_POSITION, nat: false };
+    return null;
+  }).filter(Boolean);
+}
+const canPick = (p) => !state.used.includes(p[0]) && openFits(p).length > 0;
+
+function spin() {
+  const ok = ERAS.map((_, i) => i).filter((i) => ERAS[i].p.some(canPick));
+  let pool = ok.filter((i) => !state.recent.includes(i));
+  if (!pool.length) pool = ok;
+  state.current = pickOne(pool);
+  state.recent = state.recent.concat(state.current).slice(-8);
+  state.selected = null;
+}
+
+function place(idx, slotId) {
+  const era = ERAS[state.current], p = era.p[idx];
+  const fit = openFits(p).find((f) => f.s.id === slotId);
+  if (!fit) return;
+  state.xi[slotId] = { name: p[0], short: shortName(p), pos: p[1], r: p[2], eff: fit.eff, nat: fit.nat, club: era.c, era: era.e };
+  state.used.push(p[0]);
+  if (filledCount() === SLOTS.length) { state.current = null; state.selected = null; }
+  else spin();
+  render(true);
+}
+
+function choose(idx) {
+  const p = ERAS[state.current].p[idx];
+  const fits = openFits(p);
+  const kinds = [...new Set(fits.map((f) => f.s.pos))];
+  if (kinds.length === 1) { place(idx, fits[0].s.id); return; }
+  state.selected = state.selected === idx ? null : idx;
+  render(false);
+}
+
+function teamRating(xi = state.xi) {
+  const slots = SLOTS.filter((s) => xi[s.id]);
+  if (!slots.length) return null;
+  let sum = 0, w = 0;
+  for (const s of slots) { const wt = s.pos === "GK" ? 1.2 : 1; sum += xi[s.id].eff * wt; w += wt; }
+  return sum / w;
+}
+
+// ---------- Rendering: draft ----------
+function slateText(code) {
+  const L = LEAGUES[code], C = CONT[L.cont];
+  const n = (L.teams.length - 1) * 2;
+  return `<b>${n}</b> league games, plus the ${L.cups.map((c) => c.n).join(" and the ")}, the ${L.sup.n} and the ${C.n}.`;
+}
+
+function renderLeagues() {
+  const locked = !!state.result;
+  $("#leagues").innerHTML = Object.entries(LEAGUES).map(([code, L]) =>
+    `<button class="league" data-league="${code}" aria-pressed="${state.league === code}" ${locked ? "disabled" : ""}>${esc(L.name)}</button>`).join("");
+  $("#slate").innerHTML = slateText(state.league);
+}
+
+function renderPitch() {
+  const sel = state.selected != null && state.current != null ? ERAS[state.current].p[state.selected] : null;
+  const fits = sel ? openFits(sel) : [];
+  const pitch = $("#pitch");
+  pitch.querySelectorAll(".slot").forEach((n) => n.remove());
+  for (const s of SLOTS) {
+    const pl = state.xi[s.id];
+    const fit = fits.find((f) => f.s.id === s.id);
+    const b = document.createElement("button");
+    b.className = "slot" + (pl ? " filled" + (pl.nat ? "" : " off") : "") + (fit ? " target" + (fit.nat ? "" : " offpos") : "");
+    b.style.left = s.x + "%"; b.style.top = s.y + "%";
+    b.dataset.slot = s.id;
+    if (!fit) b.tabIndex = pl ? 0 : -1;
+    const discText = pl ? (state.showRatings ? pl.eff : s.pos) : s.pos;
+    b.innerHTML = `<span class="disc">${discText}</span><span class="name">${pl ? esc(pl.short) : fit ? (fit.nat ? "Place here" : `−${OFF_POSITION}`) : ""}</span>`;
+    b.setAttribute("aria-label", pl ? `${s.pos}: ${pl.name}, ${pl.club} ${pl.era}${pl.nat ? "" : ", out of position"}` : fit ? `Place at ${s.pos}` : `${s.pos}, empty`);
+    if (pl) b.title = `${pl.name} · ${pl.club} ${pl.era}${pl.nat ? "" : " · out of position"}`;
+    pitch.appendChild(b);
+  }
+  const tr = teamRating();
+  $("#teamRating").textContent = tr == null ? "–" : state.showRatings || state.result ? tr.toFixed(1) : "??";
+}
+
+function renderSpin(animate) {
+  const el = $("#spin");
+  if (state.current == null) {
+    if (state.result) {
+      el.innerHTML = `<div class="done"><span class="label">Season played</span><h2>Your XI</h2>
+        <ul class="list" style="width:100%">${SLOTS.slice().reverse().map((s) => { const p = state.xi[s.id]; return `<li><span>${esc(p.name)} <small>${s.pos} · ${esc(p.club)} ${p.era}${p.nat ? "" : " · out of position"}</small></span><span>${p.eff}</span></li>`; }).join("")}</ul></div>`;
+      return;
+    }
+    el.innerHTML = `<div class="done"><span class="label">Round 11 of 11 complete</span><h2>Your XI is set</h2>
+      <p class="hint">Playing in the ${esc(LEAGUES[state.league].name)}. ${slateText(state.league)}</p>
+      <button class="btn primary" id="play">Play the season</button></div>`;
+    return;
+  }
+  const era = ERAS[state.current];
+  const round = filledCount() + 1;
+  const sel = state.selected;
+  el.innerHTML = `
+    <div class="spin-head">
+      <div class="club${animate ? " flip" : ""}">
+        <span class="label">Round ${round} of 11</span>
+        <span class="club-name">${esc(era.c)}</span>
+        <span class="club-meta">${era.e} · ${esc(era.lg)}</span>
+      </div>
+      <button class="btn" id="respin" ${state.respins ? "" : "disabled"}>Re-spin (${state.respins} left)</button>
+    </div>
+    <p class="hint">${sel == null ? "Pick one player from this squad." : "Choose where he plays, here or on the pitch."}</p>
+    <ul class="squad">${era.p.map((p, i) => {
+      const taken = state.used.includes(p[0]);
+      const ok = canPick(p);
+      const why = taken ? "Already in your XI" : !ok ? "No open position" : "";
+      let places = "";
+      if (sel === i) {
+        const seen = new Set();
+        places = `<div class="places">${openFits(p).filter((f) => { const k = f.s.pos; if (seen.has(k)) return false; seen.add(k); return true; })
+          .map((f) => `<button class="btn" data-place="${i}" data-slot="${f.s.id}">${f.s.pos}${f.nat ? "" : ` (−${OFF_POSITION})`}</button>`).join("")}</div>`;
+      }
+      return `<li><button class="pick" data-pick="${i}" ${ok ? "" : "disabled"} aria-pressed="${sel === i}" ${why ? `title="${why}"` : ""}>
+        <span class="pname">${esc(p[0])}</span>
+        <span class="pos">${p[1].split(" ").map((q) => `<span class="chip">${q}</span>`).join("")}</span>
+        <span class="rating">${state.showRatings ? p[2] : ""}</span></button>${places}</li>`;
+    }).join("")}</ul>`;
+}
+
+function render(animate) {
+  renderLeagues();
+  renderPitch();
+  renderSpin(animate);
+  snapshot();
+}
+
+// ---------- Simulation ----------
+const HOME = 2.5;
+function playMatch(us, opp, venue) {
+  const d = us - opp.s + (venue === "H" ? HOME : venue === "A" ? -HOME : 0);
+  const pW = sig(d / 4 - 0.65), pL = sig(-d / 4 - 0.65);
+  const r = Math.random();
+  let gf, ga;
+  if (r < pW) { gf = 1 + pois(0.5 + Math.max(0, d) / 13); ga = Math.min(gf - 1, pois(Math.max(0.15, 0.75 - Math.max(0, d) / 40))); }
+  else if (r < pW + pL) { ga = 1 + pois(0.5 + Math.max(0, -d) / 13); gf = Math.min(ga - 1, pois(Math.max(0.15, 0.75 - Math.max(0, -d) / 40))); }
+  else { gf = ga = pois(1.0); }
+  return { opp: opp.n, venue, gf, ga, d, note: "" };
+}
+const resOf = (m) => (m.gf > m.ga ? "W" : m.gf < m.ga ? "L" : "D");
+
+// Extra time, then penalties. Mutates the last match. Returns true if we go through.
+function settle(m, d, ourAgg, theirAgg) {
+  if (ourAgg !== theirAgg) return ourAgg > theirAgg;
+  if (Math.random() < 0.4) {
+    if (Math.random() < sig(d / 4)) { m.gf++; m.note = "aet"; return true; }
+    m.ga++; m.note = "aet"; return false;
+  }
+  const won = Math.random() < 0.5 + clamp(d, -20, 20) * 0.01;
+  m.note = won ? "won on pens" : "lost on pens";
+  return won;
+}
+
+function tie(us, opp, round, comp, t) {
+  const ms = [];
+  if (round.legs === 2) {
+    const first = Math.random() < 0.5 ? "A" : "H";
+    const a = playMatch(us, opp, first), b = playMatch(us, opp, first === "H" ? "A" : "H");
+    a.stage = round.n + ", 1st leg"; b.stage = round.n + ", 2nd leg";
+    const through = settle(b, b.d, a.gf + b.gf, a.ga + b.ga);
+    a.t = t; b.t = t + 0.015; ms.push(a, b);
+    return { ms, through, agg: `${a.gf + b.gf}–${a.ga + b.ga}` };
+  }
+  const venue = round.neutral ? "N" : Math.random() < 0.5 ? "H" : "A";
+  const m = playMatch(us, opp, venue);
+  m.stage = round.n; m.t = t;
+  const through = settle(m, m.d, m.gf, m.ga);
+  ms.push(m);
+  return { ms, through, agg: null };
+}
+
+function runLeague(L, us) {
+  const n = L.teams.length;
+  const opps = L.teams.slice(0, n - 1).map((name, i) => ({ n: name, s: L.top - (L.top - L.bottom) * (i / (n - 2)) + (Math.random() * 3 - 1.5) }));
+  const fixtures = shuffle(opps.flatMap((o) => [[o, "H"], [o, "A"]]));
+  const ms = fixtures.map(([o, v], k) => { const m = playMatch(us, o, v); m.stage = `Matchday ${k + 1}`; m.t = 0.03 + (k + 0.5) / fixtures.length * 0.94; return m; });
+  const W = ms.filter((m) => resOf(m) === "W").length, D = ms.filter((m) => resOf(m) === "D").length;
+  const pts = W * 3 + D;
+  const games = fixtures.length;
+  const table = opps.map((o) => {
+    const frac = (o.s - L.bottom) / (L.top - L.bottom);
+    const ppg = clamp(0.75 + 1.5 * frac + (Math.random() + Math.random() - 1) * 0.25, 0.4, 2.6);
+    return { n: o.n, pts: Math.round(ppg * games) };
+  });
+  table.push({ n: "Your XI", pts, you: true });
+  table.sort((a, b) => b.pts - a.pts || (a.you ? -1 : b.you ? 1 : 0));
+  const pos = table.findIndex((r) => r.you) + 1;
+  return { n: L.name, kind: "league", ms, won: pos === 1, pos, pts, table,
+    outcome: pos === 1 ? `Champions on ${pts} points, ${pts - table[1].pts} clear of ${table[1].n}` : `Finished ${ordinal(pos)} on ${pts} points. ${table[0].n} won it with ${table[0].pts}` };
+}
+
+function cupOpponent(L, i, total, used) {
+  if (i === 0 && Math.random() < 0.6) return { n: pickOne(L.lower), s: 62 + Math.random() * 6 };
+  const n = L.teams.length;
+  const frac = total > 1 ? i / (total - 1) : 1;
+  let idx = clamp(Math.round((1 - frac) * (n - 1) + (Math.random() * 6 - 3)), 0, n - 1);
+  for (let k = 0; k < n && used.has(L.teams[idx]); k++) idx = (idx + 1) % n;
+  used.add(L.teams[idx]);
+  return { n: L.teams[idx], s: L.top - (L.top - L.bottom) * (idx / (n - 1)) };
+}
+
+function superOpponent(L, used) {
+  const idx = pickOne([0, 1, 2, 3].filter((k) => !used.has(L.teams[k])));
+  used.add(L.teams[idx]);
+  return { n: L.teams[idx], s: L.top - idx * 1.2 };
+}
+
+function runCup(cup, L, us, isSuper) {
+  const ms = [], used = new Set();
+  const total = cup.rounds.length;
+  for (let i = 0; i < total; i++) {
+    const r = cup.rounds[i];
+    const opp = isSuper ? superOpponent(L, used) : cupOpponent(L, i, total, used);
+    const t = isSuper ? 0.005 + i * 0.004 : cup.start + (cup.end - cup.start) * (total > 1 ? i / (total - 1) : 1);
+    const res = tie(us, opp, r, cup.n, t);
+    ms.push(...res.ms);
+    if (!res.through) {
+      const last = res.ms[res.ms.length - 1];
+      const how = res.agg ? `${res.agg} on aggregate` : `${last.gf}–${last.ga}`;
+      const pens = last.note.includes("pens") ? " on penalties" : last.note === "aet" ? " after extra time" : "";
+      return { n: cup.n, kind: isSuper ? "super" : "cup", ms, won: false,
+        outcome: r.n === "Final" ? `Lost the final to ${opp.n}${pens} (${how})` : `Knocked out in the ${r.n.toLowerCase()} by ${opp.n}${pens} (${how})` };
+    }
+  }
+  const f = ms[ms.length - 1];
+  return { n: cup.n, kind: isSuper ? "super" : "cup", ms, won: true, outcome: `Winners. Beat ${f.opp} in the final${f.note === "won on pens" ? " on penalties" : ""}` };
+}
+
+function runCont(C, code, us) {
+  const ms = [];
+  const pool = C.phasePool.filter((o) => o.lg !== code).sort((a, b) => b.s - a.s);
+  const potSize = Math.ceil(pool.length / 4);
+  const phaseOpps = shuffle([0, 1, 2, 3].flatMap((k) => shuffle(pool.slice(k * potSize, (k + 1) * potSize)).slice(0, 2)));
+  const venues = shuffle(["H", "H", "H", "H", "A", "A", "A", "A"]);
+  phaseOpps.forEach((o, k) => { const m = playMatch(us, o, venues[k]); m.stage = `League phase, game ${k + 1}`; m.t = 0.12 + k * 0.045; ms.push(m); });
+  const pts = ms.reduce((a, m) => a + ({ W: 3, D: 1, L: 0 }[resOf(m)]), 0);
+  const faced = new Set();
+  const koPool = C.koPool.slice().sort((a, b) => b.s - a.s);
+  const draw = (ranks, from = 0) => { const opts = koPool.slice(from, ranks).filter((o) => !faced.has(o.n)); const o = pickOne(opts.length ? opts : koPool.slice(0, ranks)); faced.add(o.n); return o; };
+  let rounds = C.ko;
+  let phaseNote = `${pts} points in the league phase, straight into the last 16`;
+  if (pts < C.top8) {
+    if (C.playoffMin == null || pts < C.playoffMin) return { n: C.n, kind: "cont", ms, won: false, outcome: `Out in the league phase with ${pts} points` };
+    rounds = [C.playoff].concat(C.ko);
+    phaseNote = `${pts} points in the league phase, into the play-off round`;
+  }
+  const kt = [0.52, 0.62, 0.74, 0.86, 0.99];
+  const offset = kt.length - rounds.length;
+  for (let i = 0; i < rounds.length; i++) {
+    const r = rounds[i];
+    const opp = r.from != null ? draw(r.to, r.from) : draw(r.ranks);
+    const res = tie(us, opp, r, C.n, kt[offset + i]);
+    ms.push(...res.ms);
+    if (!res.through) {
+      const last = res.ms[res.ms.length - 1];
+      const how = res.agg ? `${res.agg} on aggregate` : `${last.gf}–${last.ga}`;
+      const pens = last.note.includes("pens") ? " on penalties" : last.note === "aet" ? " after extra time" : "";
+      return { n: C.n, kind: "cont", ms, won: false, phaseNote,
+        outcome: r.n === "Final" ? `Lost the final to ${opp.n}${pens} (${how})` : `Knocked out in the ${r.n.toLowerCase()} by ${opp.n}${pens} (${how})` };
+    }
+  }
+  const f = ms[ms.length - 1];
+  return { n: C.n, kind: "cont", ms, won: true, phaseNote, outcome: `Champions of ${C.n === "Champions League" ? "Europe" : "Asia"}. Beat ${f.opp} in the final${f.note === "won on pens" ? " on penalties" : ""}` };
+}
+
+const SCORE_WEIGHT = { ST: 6, LW: 3.5, RW: 3.5, CM: 1.5, LB: 0.5, RB: 0.5, CB: 0.35, GK: 0 };
+function assignScorers(all, xi) {
+  const pool = SLOTS.map((s) => ({ p: xi[s.id], w: SCORE_WEIGHT[s.pos] * Math.pow(xi[s.id].eff / 85, 4) }));
+  const total = pool.reduce((a, x) => a + x.w, 0);
+  const goals = new Map();
+  for (const m of all) for (let g = 0; g < m.gf; g++) {
+    let r = Math.random() * total, who = pool[0].p;
+    for (const x of pool) { r -= x.w; if (r <= 0) { who = x.p; break; } }
+    goals.set(who.name, (goals.get(who.name) || 0) + 1);
+  }
+  return [...goals.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function simulate() {
+  const L = LEAGUES[state.league];
+  const us = teamRating();
+  const comps = [runCup(L.sup, L, us, true), runLeague(L, us), ...L.cups.map((c) => runCup(c, L, us, false)), runCont(CONT[L.cont], state.league, us)];
+  for (const c of comps) for (const m of c.ms) { m.res = resOf(m); m.comp = c.n; }
+  const all = comps.flatMap((c) => c.ms).sort((a, b) => a.t - b.t);
+  const count = (ms, r) => ms.filter((m) => m.res === r).length;
+  const firstLoss = all.findIndex((m) => m.res === "L");
+  return {
+    league: state.league, rating: us, comps, all,
+    W: count(all, "W"), D: count(all, "D"), L: count(all, "L"),
+    gf: all.reduce((a, m) => a + m.gf, 0), ga: all.reduce((a, m) => a + m.ga, 0),
+    firstLoss: firstLoss < 0 ? null : { i: firstLoss + 1, m: all[firstLoss] },
+    scorers: assignScorers(all, state.xi),
+    trophies: comps.filter((c) => c.won).map((c) => c.n),
+  };
+}
+
+// ---------- Rendering: results ----------
+const HAUL = ["", "", "Double", "Treble", "Quadruple", "Quintuple", "Sextuple"];
+const CUP_SVG = `<svg class="cup" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.4 12H8a4 4 0 0 1-4-4V5h3V3Zm10 4v3a2 2 0 0 0 1-1.7V7h-1ZM6 7v1.3A2 2 0 0 0 7 10V7H6Z"/></svg>`;
+
+function verdict(R) {
+  const n = R.all.length, all = R.comps.length;
+  const lgc = R.comps.find((c) => c.kind === "league");
+  const lgL = lgc.ms.filter((m) => m.res === "L").length;
+  const haul = HAUL[R.trophies.length] ? ` A ${HAUL[R.trophies.length].toLowerCase()}.` : "";
+  if (R.L === 0 && R.D === 0 && R.trophies.length === all)
+    return { big: "The Perfect Season", cls: "gold", sub: `${n} played, ${n} won. Every trophy on offer, and not a single point dropped.` };
+  if (R.L === 0 && R.trophies.length === all)
+    return { big: "Invincibles", cls: "gold", sub: `Unbeaten in all ${n} matches and every trophy in the cabinet.${haul}` };
+  if (R.L === 0) {
+    const missed = R.comps.filter((c) => !c.won).map((c) => c.n);
+    return { big: "Invincibles", cls: "gold", sub: `Unbeaten in all ${n} matches, though the ${missed.join(" and the ")} got away.${haul}` };
+  }
+  const fl = R.firstLoss;
+  const where = `${fl.m.comp}, ${fl.m.stage.toLowerCase()}: ${fl.m.gf}–${fl.m.ga} ${fl.m.venue === "A" ? "away at" : fl.m.venue === "H" ? "at home to" : "against"} ${fl.m.opp}`;
+  if (lgL === 0)
+    return { big: "Unbeaten in the league", cls: "", sub: `${R.L} defeat${R.L > 1 ? "s" : ""} elsewhere ended the dream. The first came in match ${fl.i} of ${n} (${where}).${haul}` };
+  return { big: "Beaten", cls: "loss", sub: `The run ended in match ${fl.i} of ${n} (${where}). ${R.L} defeat${R.L > 1 ? "s" : ""} in all.${haul}` };
+}
+
+function fixtureRows(c) {
+  return c.ms.map((m) => `<tr><td>${esc(m.stage)}</td><td>${m.venue === "H" ? "Home" : m.venue === "A" ? "Away" : "Neutral"}</td><td>${esc(m.opp)}</td>
+    <td class="score">${m.gf}–${m.ga}${m.note ? ` <small>${m.note}</small>` : ""}</td><td><span class="res ${m.res}">${m.res}</span></td></tr>`).join("");
+}
+
+function miniTable(c) {
+  const rows = c.table.map((r, i) => ({ ...r, i })).filter((r) => r.i < 4 || r.you);
+  return `<table class="mini">${rows.map((r) => `<tr class="${r.you ? "you" : ""}"><td>${r.i + 1}</td><td>${esc(r.n)}</td><td>${r.pts} pts</td></tr>`).join("")}</table>`;
+}
+
+function renderResults(animate) {
+  const R = state.result, el = $("#results");
+  el.hidden = false;
+  const V = verdict(R);
+  const L = LEAGUES[R.league];
+  el.innerHTML = `
+    <div class="verdict">
+      <span class="label">${esc(L.name)} season · ${R.all.length} matches · team rating ${R.rating.toFixed(1)}</span>
+      <p class="big ${V.cls}" id="bigVerdict">${animate ? "Kick-off…" : esc(V.big)}</p>
+      <p id="subVerdict" ${animate ? 'style="visibility:hidden"' : ""}>${esc(V.sub)}</p>
+    </div>
+    <div class="ticker" id="ticker" aria-hidden="true"></div>
+    <div class="legend"><span><i style="background:var(--win)"></i>Win</span><span><i style="background:var(--draw)"></i>Draw (incl. shoot-outs)</span><span><i style="background:var(--loss)"></i>Defeat</span><span>In date order</span></div>
+    <div class="scoreboard">
+      <div class="stat"><span class="label">Won</span><span class="v W">${R.W}</span></div>
+      <div class="stat"><span class="label">Drawn</span><span class="v D">${R.D}</span></div>
+      <div class="stat"><span class="label">Lost</span><span class="v L">${R.L}</span></div>
+      <div class="stat"><span class="label">Goals</span><span class="v">${R.gf}–${R.ga}</span></div>
+      <div class="stat"><span class="label">Trophies</span><span class="v">${R.trophies.length}/${R.comps.length}</span></div>
+    </div>
+    <div>
+      <h2>Competitions</h2>
+      <div class="comps">${R.comps.map((c) => {
+        const w = c.ms.filter((m) => m.res === "W").length, d = c.ms.filter((m) => m.res === "D").length, l = c.ms.filter((m) => m.res === "L").length;
+        return `<details class="comp"><summary>${CUP_SVG.replace('class="cup"', `class="cup${c.won ? " won" : ""}"`)}
+          <span><h3>${esc(c.n)}</h3><span class="outcome">${esc(c.outcome)}${c.phaseNote ? `. ${esc(c.phaseNote)}` : ""}</span></span>
+          <span class="rec">${w}W ${d}D ${l}L</span></summary>
+          <div class="fixtures">${c.kind === "league" ? miniTable(c) : ""}<table>${fixtureRows(c)}</table></div></details>`;
+      }).join("")}</div>
+    </div>
+    <div class="two">
+      <div><h2>Top scorers</h2><ul class="list">${R.scorers.slice(0, 5).map(([n, g]) => `<li><span>${esc(n)}</span><span>${g}</span></li>`).join("") || "<li><span>Nobody scored</span><span>0</span></li>"}</ul></div>
+      <div><h2>Next</h2>
+        <p class="hint">Run the same XI again to see how much was luck, or start a new draft.</p>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn" id="replay">Replay season</button>
+          <button class="btn" id="newDraft">New draft</button>
+          <button class="btn" id="share">Copy result</button>
+          <span class="toast" id="toast" role="status"></span>
+        </div>
+      </div>
+    </div>`;
+
+  const ticker = $("#ticker");
+  const add = (m) => { const s = document.createElement("span"); s.className = "tick " + m.res; s.title = `${m.comp}: ${m.opp} ${m.gf}–${m.ga}`; ticker.appendChild(s); };
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finish = () => { $("#bigVerdict").textContent = V.big; $("#subVerdict").style.visibility = ""; };
+  if (!animate || reduce) { R.all.forEach(add); finish(); return; }
+  let i = 0;
+  const step = Math.max(18, 2400 / R.all.length);
+  const timer = setInterval(() => {
+    if (!document.body.contains(ticker)) { clearInterval(timer); return; }
+    const m = R.all[i++]; add(m);
+    $("#bigVerdict").textContent = `${R.all.slice(0, i).filter((x) => x.res === "W").length}–${R.all.slice(0, i).filter((x) => x.res === "D").length}–${R.all.slice(0, i).filter((x) => x.res === "L").length}`;
+    if (i >= R.all.length) { clearInterval(timer); setTimeout(finish, 350); }
+  }, step);
+}
+
+function shareText(R) {
+  const L = LEAGUES[R.league];
+  const lg = R.comps.find((c) => c.kind === "league");
+  const haul = HAUL[R.trophies.length] ? ` (${HAUL[R.trophies.length]})` : "";
+  return [`INVINCIBLES · ${L.name}`, `XI: ${SLOTS.slice().reverse().map((s) => state.xi[s.id].short).join(", ")}`,
+    `League: ${ordinal(lg.pos)}, ${lg.pts} pts`, `All competitions: ${R.W}W ${R.D}D ${R.L}L`, `Trophies: ${R.trophies.length}/${R.comps.length}${haul}`,
+    R.L === 0 ? "Unbeaten all season." : `First defeat: match ${R.firstLoss.i}`].join("\n");
+}
+
+function play() {
+  state.result = simulate();
+  render(false);
+  renderResults(true);
+  $("#results").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+
+// ---------- Events ----------
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.league && !state.result) { state.league = t.dataset.league; store.set("inv-league", state.league); render(false); return; }
+  if (t.dataset.pick != null) { choose(+t.dataset.pick); return; }
+  if (t.dataset.place != null) { place(+t.dataset.place, t.dataset.slot); return; }
+  if (t.classList.contains("slot") && t.classList.contains("target")) { place(state.selected, t.dataset.slot); return; }
+  switch (t.id) {
+    case "respin": if (state.respins > 0) { state.respins--; spin(); render(true); } break;
+    case "play": play(); break;
+    case "replay": state.result = simulate(); renderResults(true); snapshot(); break;
+    case "newDraft": state = freshState(state); spin(); $("#results").hidden = true; $("#results").innerHTML = ""; render(true); window.scrollTo({ top: 0 }); break;
+    case "share": {
+      const text = shareText(state.result), toast = $("#toast");
+      const ok = () => { toast.textContent = "Copied"; setTimeout(() => (toast.textContent = ""), 2000); };
+      try { navigator.clipboard.writeText(text).then(ok, () => { toast.textContent = text; }); } catch (err) { toast.textContent = text; }
+      break;
+    }
+  }
+});
+$("#showRatings").addEventListener("change", (e) => { state.showRatings = e.target.checked; store.set("inv-ratings", e.target.checked ? "1" : "0"); render(false); });
+
+// ---------- Boot ----------
+function snapshot() {
+  try { window.claude?.hot?.snapshot?.(() => ({ state })); } catch (e) {}
+}
+function start(data) {
+  state = data && data.state ? data.state : freshState();
+  $("#showRatings").checked = state.showRatings;
+  if (state.current == null && filledCount() < SLOTS.length) spin();
+  render(true);
+  if (state.result) renderResults(false);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
